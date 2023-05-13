@@ -1,19 +1,32 @@
 const express = require("express");
 var multer  = require('multer');
 const mysql = require('mysql2/promise');
-let i = 0;
+const fs = require("fs");
+const { Readable } = require('stream');
+const { pipeline } = require("stream");
+const { promisify } = require("util");
+var path = require('path');
+require('dotenv').config()
 
+const pipelineAsync = promisify(pipeline);
+
+// Creating a connection pool
 const pool = mysql.createPool({
     host: 'localhost',
-    user: 'root',
-    password: 'root@123',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
     database: 'mydatabase',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-var upload = multer({ dest: __dirname + '/public/uploads/480p' });
+var storage = multer.diskStorage({
+    destination:  __dirname + '/public/uploads/'
+});
+
+// Destination path of the uploaded chunks
+var upload = multer(storage);
 var type = upload.single('upl');
 
 const app = express();
@@ -22,29 +35,43 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-    res.send("Hello world !")
-})
+const fileStream = fs.createWriteStream(__dirname + '/public/uploads/merged.webm', { flags: 'a' });
 
 app.post('/video', type, async (req, res) => {
-    console.log(req.file);
 
-    const file = req.file;
-    const filename = file.originalname;
+    const filename = req.file.originalname;
+    const videoId = req.body.chunkNumber;
 
-    const videoId = i++;
+    const webmReadable = new Readable();
+    webmReadable._read = () => { };
+    webmReadable.push(req.file.buffer);
+    webmReadable.push(null);
+
+    const outputWebmStream = fs.createWriteStream( __dirname + `/public/uploads/chunk_${videoId}.webm`);
+    webmReadable.pipe(outputWebmStream);
+
+    fileStream.write(req.file.buffer);
+
     const dateUploaded = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     try {
+        // Inserting info about chunk to database
         const [rows, fields] = await pool.query('INSERT INTO video_segments (id, filename, dateuploaded) VALUES (?, ?, ?)', [videoId, filename, dateUploaded]);
-        console.log(rows);
     } catch (err) {
         console.log(err);
         res.status(500).send("Error inserting data into database");
         return;
     }
 
-    res.status(200);
+    res.status(200).send({"uploaded": "Success", "blob_number": videoId});
+    res.end();
+})
+
+// Get the live status of number of chunks uploaded
+app.get('/getStatus', async (req, res, next) => {
+    const [rows, fields] = await pool.query('SELECT count(*) as count from video_segments');
+    res.send(rows[0]);
+    res.end();
 })
 
 app.listen(8000, ()=> {
