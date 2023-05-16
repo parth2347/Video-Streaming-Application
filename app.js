@@ -8,15 +8,15 @@ const statusButton = document.getElementById('show-status');
 
 // Video constraints
 // Resolution: 720p, Frame Rate: 30 fps
-// Encoding type: H.264 video compression
+// Encoding type: vp9 video compression
 // Bit rate: 5 Mbps
 const constraints = {
     video: {
-        width: {ideal: 1280},
-        height: {ideal: 720},
+        width: {ideal: 426},
+        height: {ideal: 240},
         frameRate: {ideal: 30},
-        mimeType: 'video/webm;codecs=H264',
-        videoBitsPerSecond: 5000000
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 700000
     },
     audio: false
 }
@@ -28,7 +28,7 @@ const start = async () => {
         video.srcObject = stream;
         video.play();
         
-        mediaRecorder = new MediaRecorder(stream, {mimeType: 'video/webm;codecs=h264'});
+        mediaRecorder = new MediaRecorder(stream, {mimeType: 'video/webm;codecs=vp9'});
 
         // Function fired every "duration" seconds
         mediaRecorder.ondataavailable = async (e) => {
@@ -37,7 +37,7 @@ const start = async () => {
             let blob = e.data;
             // Upload the captured chunk to remote server
             let fd = new FormData();
-            fd.append('upl', blob, `blobby_${sequenceNumber}.webm`)
+            fd.append('upl', blob, `blob_${sequenceNumber}`);
             fd.append('chunkNumber', sequenceNumber);
             const response = await fetch("http://localhost:8000/video", {
                 method: "POST",
@@ -53,9 +53,24 @@ const start = async () => {
 
 
     // Stop the live video capturing after few seconds
-    setTimeout(()=> {
+    setTimeout( async ()=> {
         console.log("Stopping...");
         mediaRecorder.stop();
+
+        // End the write stream on the server
+        try{
+            const response = await fetch("http://localhost:8000/close", {
+                    method: "GET",
+                });
+            const result = await response.json();
+            if(result.closed){
+                console.log("Stream is closed on the server !")
+            }
+        } catch(error){
+            console.error('Error while getting number of chunks uploaded.', error);
+        }
+
+
     }, 20000);
 }
 

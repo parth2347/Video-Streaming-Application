@@ -1,0 +1,22 @@
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static" mediaPresentationDuration="PT2S" minBufferTime="PT5.0S">
+  <Period id="0" start="PT0S">
+    <AdaptationSet mimeType="video/webm" codecs="vp9" segmentAlignment="true" bitstreamSwitching="true">
+      <Representation id="720p" bandwidth="5000000" width="1280" height="720">
+        <BaseURL>720/</BaseURL>
+        <SegmentTemplate timescale="1000" media="chunk_$Number$.webm" initialization="chunk_1.webm" startNumber="1" duration="3000"/>
+      </Representation>
+      <Representation id="480p" bandwidth="2000000" width="854" height="480">
+        <BaseURL>480/</BaseURL>
+        <SegmentTemplate timescale="1000" media="chunk_$Number$.webm" initialization="chunk_1.webm" startNumber="1" duration="3000"/>
+      </Representation>
+      <Representation id="360p" bandwidth="1000000" width="640" height="360">
+        <BaseURL>360/</BaseURL>
+        <SegmentTemplate timescale="1000" media="chunk_$Number$.webm" initialization="chunk_1.webm" startNumber="1" duration="3000"/>
+      </Representation>
+      <Representation id="240p" bandwidth="700000" width="426" height="240">
+        <BaseURL>240/</BaseURL>
+        <SegmentTemplate timescale="1000" media="chunk_$Number$.webm" initialization="chunk_1.webm" startNumber="1" duration="3000"/>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
